@@ -1,0 +1,818 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<meta name="theme-color" content="#1B6E8C">
+<title>釣行チェック＆ライン手帳</title>
+<link rel="manifest" href="manifest.json">
+<style>
+  :root {
+    --primary: #1B6E8C;
+    --primary-light: #E5F2F7;
+    --accent: #F2994A;
+    --danger: #CC5555;
+    --danger-light: #FDEDED;
+    --ok: #4A9D6E;
+    --ok-light: #EAF6EF;
+    --bg: #F5F7F8;
+    --card: #FFFFFF;
+    --text: #26313A;
+    --text-sub: #74808A;
+    --border: #E2E7EA;
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Hiragino Sans", "Yu Gothic", sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    padding-bottom: 80px;
+  }
+  header {
+    background: var(--primary);
+    color: #fff;
+    padding: 18px 16px 14px;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+  }
+  header h1 { margin: 0; font-size: 18px; font-weight: 700; }
+  header p { margin: 4px 0 0; font-size: 12px; opacity: 0.85; }
+
+  main { padding: 14px; max-width: 480px; margin: 0 auto; }
+
+  .section-title {
+    font-size: 13px; font-weight: 700; color: var(--text-sub);
+    margin: 20px 4px 8px; letter-spacing: 0.02em;
+  }
+  .section-title:first-child { margin-top: 4px; }
+
+  /* 釣り物選択チップ */
+  .chip-row { display: flex; gap: 8px; overflow-x: auto; padding: 4px 0 8px; -webkit-overflow-scrolling: touch; }
+  .chip {
+    flex-shrink: 0;
+    border: 1.5px solid var(--border);
+    background: var(--card);
+    color: var(--text);
+    border-radius: 20px;
+    padding: 8px 14px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    white-space: nowrap;
+  }
+  .chip.active { background: var(--primary); color: #fff; border-color: var(--primary); }
+
+  /* 進捗バー */
+  .progress-wrap {
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: 12px; padding: 14px; margin-bottom: 12px;
+  }
+  .progress-label { display: flex; justify-content: space-between; font-size: 12.5px; margin-bottom: 8px; }
+  .progress-label b { color: var(--primary); }
+  .progress-bar { height: 10px; background: var(--bg); border-radius: 5px; overflow: hidden; }
+  .progress-fill { height: 100%; background: var(--primary); border-radius: 5px; transition: width 0.2s; }
+  .progress-fill.full { background: var(--ok); }
+
+  /* チェック項目 */
+  .check-item {
+    display: flex; align-items: center; gap: 12px;
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: 10px; padding: 12px 14px; margin-bottom: 6px;
+    cursor: pointer; user-select: none;
+  }
+  .check-item.checked { opacity: 0.55; background: var(--ok-light); border-color: var(--ok); }
+  .check-box {
+    width: 24px; height: 24px; border: 2px solid var(--border); border-radius: 6px;
+    flex-shrink: 0; display: flex; align-items: center; justify-content: center;
+    font-size: 15px; color: #fff;
+  }
+  .check-item.checked .check-box { background: var(--ok); border-color: var(--ok); }
+  .check-label { flex: 1; font-size: 14px; font-weight: 600; }
+  .check-item.checked .check-label { text-decoration: line-through; }
+  .check-del { color: var(--text-sub); font-size: 16px; padding: 4px 6px; background: none; border: none; }
+
+  .add-item-row { display: flex; gap: 8px; margin: 10px 0; }
+  .add-item-row input {
+    flex: 1; border: 1px solid var(--border); border-radius: 10px;
+    padding: 11px 12px; font-size: 14px; font-family: inherit;
+  }
+
+  .btn {
+    border: none; border-radius: 10px; padding: 10px 14px;
+    font-size: 13.5px; font-weight: 700; cursor: pointer; white-space: nowrap;
+  }
+  .btn-primary { background: var(--primary); color: #fff; }
+  .btn-primary:active { opacity: 0.85; }
+  .btn-accent { background: var(--accent); color: #fff; }
+  .btn-ok { background: var(--ok); color: #fff; }
+  .btn-cancel { background: var(--bg); color: var(--text); }
+  .btn-ghost { background: transparent; color: var(--text-sub); font-size: 12px; }
+  .btn-big { width: 100%; padding: 15px; font-size: 15px; margin-top: 12px; }
+  .btn-big:disabled { background: var(--border); color: var(--text-sub); }
+
+  /* リールカード */
+  .reel-card {
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: 12px; padding: 14px; margin-bottom: 10px;
+  }
+  .reel-card.warn { border-color: var(--danger); background: var(--danger-light); }
+  .reel-head { display: flex; align-items: center; justify-content: space-between; }
+  .reel-name { font-weight: 700; font-size: 14.5px; }
+  .reel-line { font-size: 12px; color: var(--text-sub); margin-top: 2px; }
+  .reel-usage { margin-top: 10px; }
+  .usage-label { display: flex; justify-content: space-between; font-size: 11.5px; color: var(--text-sub); margin-bottom: 5px; }
+  .usage-label .warn-text { color: var(--danger); font-weight: 700; }
+  .usage-bar { height: 8px; background: var(--bg); border-radius: 4px; overflow: hidden; }
+  .usage-fill { height: 100%; background: var(--primary); border-radius: 4px; }
+  .usage-fill.mid { background: var(--accent); }
+  .usage-fill.over { background: var(--danger); }
+  .reel-actions { display: flex; gap: 8px; margin-top: 12px; }
+  .reel-actions .btn { flex: 1; padding: 9px; font-size: 12.5px; }
+
+  .empty { text-align: center; color: var(--text-sub); font-size: 13px; padding: 24px 0; }
+
+  /* タイムライン */
+  .timeline-item {
+    background: var(--card); border-radius: 10px; padding: 12px 14px;
+    margin-bottom: 8px; border: 1px solid var(--border);
+  }
+  .timeline-date { font-size: 11px; color: var(--text-sub); }
+  .timeline-name { font-weight: 700; font-size: 14px; margin-top: 2px; }
+  .timeline-memo { font-size: 12.5px; color: var(--text-sub); margin-top: 4px; }
+
+  .stat-row { display: flex; gap: 10px; margin-bottom: 14px; }
+  .stat-card {
+    flex: 1; background: var(--card); border: 1px solid var(--border);
+    border-radius: 12px; padding: 14px; text-align: center;
+  }
+  .stat-num { font-size: 22px; font-weight: 800; color: var(--primary); }
+  .stat-label { font-size: 11px; color: var(--text-sub); margin-top: 2px; }
+
+  /* タブバー */
+  .fab-bar {
+    position: fixed; bottom: 0; left: 0; right: 0;
+    background: #fff; border-top: 1px solid var(--border);
+    display: flex; padding: 6px 8px calc(6px + env(safe-area-inset-bottom));
+    max-width: 480px; margin: 0 auto;
+  }
+  .tab {
+    flex: 1; text-align: center; padding: 8px 0 4px;
+    font-size: 11px; color: var(--text-sub);
+    background: none; border: none; cursor: pointer;
+  }
+  .tab .icon { font-size: 20px; display: block; }
+  .tab.active { color: var(--primary); font-weight: 700; }
+
+  .view { display: none; }
+  .view.active { display: block; }
+
+  /* モーダル */
+  .overlay {
+    display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.4);
+    z-index: 100; align-items: flex-end; justify-content: center;
+  }
+  .overlay.show { display: flex; }
+  .modal {
+    background: #fff; width: 100%; max-width: 480px;
+    border-radius: 16px 16px 0 0;
+    padding: 20px 18px calc(20px + env(safe-area-inset-bottom));
+    animation: slideup 0.2s ease-out;
+    max-height: 80vh; overflow-y: auto;
+  }
+  @keyframes slideup { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+  .modal h3 { margin: 0 0 14px; font-size: 16px; }
+  .field { margin-bottom: 12px; }
+  .field label { font-size: 12px; color: var(--text-sub); display: block; margin-bottom: 4px; }
+  .field input, .field select {
+    width: 100%; border: 1px solid var(--border); border-radius: 8px;
+    padding: 10px; font-size: 14px; font-family: inherit; background: #fff;
+  }
+  .modal-actions { display: flex; gap: 8px; margin-top: 16px; }
+  .modal-actions .btn { flex: 1; padding: 12px; font-size: 14px; }
+
+  .reel-select-item {
+    display: flex; align-items: center; gap: 10px;
+    border: 1.5px solid var(--border); border-radius: 10px;
+    padding: 12px; margin-bottom: 8px; cursor: pointer;
+  }
+  .reel-select-item.selected { border-color: var(--primary); background: var(--primary-light); }
+  .reel-select-item .check-box { width: 20px; height: 20px; font-size: 13px; }
+  .reel-select-item.selected .check-box { background: var(--primary); border-color: var(--primary); }
+
+  .install-banner {
+    background: var(--primary-light); border: 1px solid var(--primary);
+    border-radius: 10px; padding: 10px 12px; font-size: 12px;
+    color: var(--primary); margin-bottom: 14px; display: none;
+  }
+  .install-banner.show { display: block; }
+
+  .alert-banner {
+    background: var(--danger-light); border: 1px solid var(--danger);
+    border-radius: 10px; padding: 10px 12px; font-size: 12.5px;
+    color: var(--danger); margin-bottom: 12px; font-weight: 600;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>🎣 釣行チェック＆ライン手帳</h1>
+  <p>忘れ物ゼロ＆PEライン巻き替え時期を自動管理</p>
+</header>
+
+<main>
+
+  <!-- チェックリスト -->
+  <div id="view-check" class="view active">
+    <div id="install-banner" class="install-banner">📲 ホーム画面に追加すると、アプリのように使えます（共有ボタン→「ホーム画面に追加」）</div>
+    <div id="line-alerts"></div>
+
+    <div class="section-title">🎯 釣り物を選ぶ</div>
+    <div class="chip-row" id="template-chips"></div>
+
+    <div class="progress-wrap">
+      <div class="progress-label">
+        <span>準備の進み具合</span>
+        <b id="progress-text">0 / 0</b>
+      </div>
+      <div class="progress-bar"><div class="progress-fill" id="progress-fill" style="width:0%"></div></div>
+    </div>
+
+    <div id="check-list"></div>
+
+    <div class="add-item-row">
+      <input type="text" id="new-item-input" placeholder="持ち物を追加…">
+      <button class="btn btn-primary" onclick="addItem()">追加</button>
+    </div>
+
+    <button class="btn btn-ok btn-big" id="complete-btn" onclick="openTripComplete()" disabled>✓ 準備完了！（釣行として記録）</button>
+    <button class="btn btn-ghost btn-big" onclick="resetChecks()" style="margin-top:6px;">チェックをリセット</button>
+  </div>
+
+  <!-- ライン管理 -->
+  <div id="view-line" class="view">
+    <div class="section-title">🧵 リール＆PEライン</div>
+    <div id="reel-list"></div>
+    <button class="btn btn-primary btn-big" onclick="openReelModal()">＋ リールを登録</button>
+  </div>
+
+  <!-- 履歴 -->
+  <div id="view-history" class="view">
+    <div class="section-title">📊 実績</div>
+    <div class="stat-row">
+      <div class="stat-card">
+        <div class="stat-num" id="stat-trips">0</div>
+        <div class="stat-label">釣行回数</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-num" id="stat-respools">0</div>
+        <div class="stat-label">巻き替え回数</div>
+      </div>
+    </div>
+    <div class="section-title">📝 タイムライン</div>
+    <div id="history-list"></div>
+  </div>
+
+</main>
+
+<div class="fab-bar">
+  <button class="tab active" data-view="check" onclick="switchView('check')">
+    <span class="icon">✅</span>チェック
+  </button>
+  <button class="tab" data-view="line" onclick="switchView('line')">
+    <span class="icon">🧵</span>ライン
+  </button>
+  <button class="tab" data-view="history" onclick="switchView('history')">
+    <span class="icon">📊</span>履歴
+  </button>
+</div>
+
+<!-- 釣行完了モーダル -->
+<div class="overlay" id="trip-overlay">
+  <div class="modal">
+    <h3>🎣 釣行を記録</h3>
+    <div class="field">
+      <label>釣行日</label>
+      <input type="date" id="trip-date">
+    </div>
+    <div class="field">
+      <label>今回使うリール（選んだリールの使用回数が +1 されます）</label>
+      <div id="trip-reel-select"></div>
+    </div>
+    <div class="field">
+      <label>メモ（任意）</label>
+      <input type="text" id="trip-memo" placeholder="例：大山沖 イサキ便">
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-cancel" onclick="closeTripModal()">キャンセル</button>
+      <button class="btn btn-ok" onclick="confirmTrip()">記録する</button>
+    </div>
+  </div>
+</div>
+
+<!-- リール登録・編集モーダル -->
+<div class="overlay" id="reel-overlay">
+  <div class="modal">
+    <h3 id="reel-modal-title">リールを登録</h3>
+    <div class="field">
+      <label>リール名</label>
+      <input type="text" id="reel-name" placeholder="例：ソルティガ 15">
+    </div>
+    <div class="field">
+      <label>PEライン（号数・銘柄など）</label>
+      <input type="text" id="reel-line" placeholder="例：PE3号 300m">
+    </div>
+    <div class="field">
+      <label>巻いた日</label>
+      <input type="date" id="reel-date">
+    </div>
+    <div class="field">
+      <label>巻き替え目安（釣行回数）</label>
+      <select id="reel-threshold">
+        <option value="10">10回</option>
+        <option value="15" selected>15回</option>
+        <option value="20">20回</option>
+        <option value="25">25回</option>
+        <option value="30">30回</option>
+      </select>
+    </div>
+    <div class="field" id="reel-count-field" style="display:none;">
+      <label>現在の使用回数</label>
+      <input type="number" id="reel-count" inputmode="numeric">
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-cancel" onclick="closeReelModal()">キャンセル</button>
+      <button class="btn btn-primary" onclick="confirmReel()">保存</button>
+    </div>
+  </div>
+</div>
+
+<!-- 巻き替えモーダル -->
+<div class="overlay" id="respool-overlay">
+  <div class="modal">
+    <h3>🧵 ラインを巻き替えた</h3>
+    <div class="field">
+      <label>巻き替え日</label>
+      <input type="date" id="respool-date">
+    </div>
+    <div class="field">
+      <label>新しいライン（変更があれば）</label>
+      <input type="text" id="respool-line" placeholder="例：PE3号 300m">
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-cancel" onclick="closeRespoolModal()">キャンセル</button>
+      <button class="btn btn-ok" onclick="confirmRespool()">記録（使用回数リセット）</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ==== チェックリストテンプレート ====
+const TEMPLATE_DEFS = {
+  'jigging': { name: 'ジギング', icon: '🐟', items: [
+    'ジギングロッド', 'ベイト/スピニングリール', 'ジグケース', 'リーダー', 'プライヤー・ハサミ',
+    'フィッシュグリップ', 'クーラー＋氷', 'ライフジャケット', 'レインウェア', 'グローブ',
+    '帽子・偏光グラス', '酔い止め', '飲み物・食料', 'タオル', '乗船料（現金）'
+  ]},
+  'sawara': { name: 'サワラキャスティング', icon: '⚔️', items: [
+    'キャスティングロッド', 'スピニングリール', 'ブレードジグ・ミノーケース', '太めリーダー',
+    'プライヤー', 'フィッシュグリップ', 'ナイフ（血抜き用）', 'クーラー＋氷',
+    'ライフジャケット', '偏光グラス', 'レインウェア', '酔い止め', '飲み物・食料', '乗船料（現金）'
+  ]},
+  'ikametal': { name: 'イカメタル', icon: '🦑', items: [
+    'イカメタルロッド', 'カウンター付リール', 'メタルスッテ各号数', '浮きスッテ・ドロッパー',
+    'ヘッドライト', 'クーラー＋氷', 'ライフジャケット', '防寒着（夜は冷える）',
+    '酔い止め', '飲み物・食料', 'ジップ袋（イカ用）', '乗船料（現金）'
+  ]},
+  'eging': { name: 'エギング', icon: '🎣', items: [
+    'エギングロッド', 'スピニングリール', 'エギケース', 'ギャフ・タモ',
+    'ヘッドライト', 'クーラー', 'ライフジャケット', '偏光グラス', 'ジップ袋', '飲み物'
+  ]},
+  'shachuhaku': { name: '前泊車中泊', icon: '🚐', items: [
+    '寝袋・毛布', 'マット', '目隠しシェード', 'ランタン', 'モバイルバッテリー',
+    '歯ブラシ・洗面用具', '着替え', '朝食・飲み物', 'アラームセット確認', 'サンダル'
+  ]},
+};
+
+const STORAGE_KEY = 'fishing-trip-manager-v1';
+
+function loadState() {
+  const raw = localStorage.getItem(STORAGE_KEY);
+  if (raw) {
+    try { return JSON.parse(raw); } catch (e) { /* fallthrough */ }
+  }
+  // 初期状態
+  const templates = {};
+  Object.keys(TEMPLATE_DEFS).forEach(key => {
+    templates[key] = {
+      customItems: [],   // ユーザー追加分
+      removedItems: [],  // ユーザーが消したデフォルト項目
+    };
+  });
+  return {
+    templates,
+    activeTemplate: 'jigging',
+    checked: {},        // { itemLabel: true }
+    reels: [],          // { id, name, line, spooledDate, tripCount, threshold }
+    trips: [],          // { date, templateId, memo, reelIds }
+    respools: [],       // { reelId, reelName, date, line }
+  };
+}
+
+function saveState() {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+}
+
+let state = loadState();
+let editingReelId = null;
+let respoolingReelId = null;
+let selectedTripReels = new Set();
+
+function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 6); }
+
+function formatDate(iso) {
+  if (!iso) return '-';
+  const d = new Date(iso);
+  return `${d.getFullYear()}/${d.getMonth() + 1}/${d.getDate()}`;
+}
+
+function getItems(templateId) {
+  const def = TEMPLATE_DEFS[templateId];
+  const t = state.templates[templateId] || { customItems: [], removedItems: [] };
+  const base = def.items.filter(i => !t.removedItems.includes(i));
+  return [...base, ...t.customItems];
+}
+
+// ==== 描画 ====
+function render() {
+  renderChips();
+  renderChecklist();
+  renderLineAlerts();
+  renderReels();
+  renderHistory();
+}
+
+function renderChips() {
+  const row = document.getElementById('template-chips');
+  row.innerHTML = '';
+  Object.entries(TEMPLATE_DEFS).forEach(([key, def]) => {
+    const chip = document.createElement('button');
+    chip.className = 'chip' + (state.activeTemplate === key ? ' active' : '');
+    chip.textContent = `${def.icon} ${def.name}`;
+    chip.onclick = () => {
+      state.activeTemplate = key;
+      state.checked = {};
+      saveState();
+      render();
+    };
+    row.appendChild(chip);
+  });
+}
+
+function renderChecklist() {
+  const list = document.getElementById('check-list');
+  list.innerHTML = '';
+  const items = getItems(state.activeTemplate);
+  let checkedCount = 0;
+
+  items.forEach(label => {
+    const isChecked = !!state.checked[label];
+    if (isChecked) checkedCount++;
+    const item = document.createElement('div');
+    item.className = 'check-item' + (isChecked ? ' checked' : '');
+    item.innerHTML = `
+      <div class="check-box">${isChecked ? '✓' : ''}</div>
+      <div class="check-label">${escapeHtml(label)}</div>
+      <button class="check-del" onclick="event.stopPropagation(); removeItem('${escapeAttr(label)}')">✕</button>
+    `;
+    item.onclick = () => toggleCheck(label);
+    list.appendChild(item);
+  });
+
+  const total = items.length;
+  document.getElementById('progress-text').textContent = `${checkedCount} / ${total}`;
+  const fill = document.getElementById('progress-fill');
+  const pct = total === 0 ? 0 : Math.round(checkedCount / total * 100);
+  fill.style.width = pct + '%';
+  fill.className = 'progress-fill' + (pct === 100 ? ' full' : '');
+
+  document.getElementById('complete-btn').disabled = !(total > 0 && checkedCount === total);
+}
+
+function renderLineAlerts() {
+  const wrap = document.getElementById('line-alerts');
+  wrap.innerHTML = '';
+  state.reels.forEach(reel => {
+    if (reel.tripCount >= reel.threshold) {
+      const div = document.createElement('div');
+      div.className = 'alert-banner';
+      div.textContent = `🧵 ${reel.name}：${reel.tripCount}回使用。PEライン巻き替え時期です！`;
+      wrap.appendChild(div);
+    }
+  });
+}
+
+function renderReels() {
+  const list = document.getElementById('reel-list');
+  list.innerHTML = '';
+  if (state.reels.length === 0) {
+    list.innerHTML = '<div class="empty">リールを登録すると、釣行のたびに使用回数が自動カウントされ、巻き替え時期をお知らせします</div>';
+    return;
+  }
+  state.reels.forEach(reel => {
+    const pct = Math.min(100, Math.round(reel.tripCount / reel.threshold * 100));
+    const over = reel.tripCount >= reel.threshold;
+    const mid = !over && pct >= 60;
+    const card = document.createElement('div');
+    card.className = 'reel-card' + (over ? ' warn' : '');
+    card.innerHTML = `
+      <div class="reel-head">
+        <div>
+          <div class="reel-name">${escapeHtml(reel.name)}</div>
+          <div class="reel-line">${escapeHtml(reel.line || '')} ／ 巻いた日：${formatDate(reel.spooledDate)}</div>
+        </div>
+      </div>
+      <div class="reel-usage">
+        <div class="usage-label">
+          <span>使用 ${reel.tripCount} / ${reel.threshold} 釣行</span>
+          ${over ? '<span class="warn-text">巻き替え時期！</span>' : ''}
+        </div>
+        <div class="usage-bar"><div class="usage-fill ${over ? 'over' : (mid ? 'mid' : '')}" style="width:${pct}%"></div></div>
+      </div>
+      <div class="reel-actions">
+        <button class="btn btn-accent" onclick="openRespoolModal('${reel.id}')">🧵 巻き替えた</button>
+        <button class="btn btn-cancel" onclick="openReelModal('${reel.id}')">編集</button>
+        <button class="btn btn-cancel" onclick="deleteReel('${reel.id}')">削除</button>
+      </div>
+    `;
+    list.appendChild(card);
+  });
+}
+
+function renderHistory() {
+  document.getElementById('stat-trips').textContent = state.trips.length;
+  document.getElementById('stat-respools').textContent = state.respools.length;
+
+  const list = document.getElementById('history-list');
+  list.innerHTML = '';
+
+  const events = [
+    ...state.trips.map(t => ({ type: 'trip', date: t.date, data: t })),
+    ...state.respools.map(r => ({ type: 'respool', date: r.date, data: r })),
+  ].sort((a, b) => new Date(b.date) - new Date(a.date));
+
+  if (events.length === 0) {
+    list.innerHTML = '<div class="empty">まだ記録がありません</div>';
+    return;
+  }
+
+  events.forEach(ev => {
+    const item = document.createElement('div');
+    item.className = 'timeline-item';
+    if (ev.type === 'trip') {
+      const def = TEMPLATE_DEFS[ev.data.templateId];
+      const reelNames = (ev.data.reelIds || [])
+        .map(id => { const r = state.reels.find(x => x.id === id); return r ? r.name : null; })
+        .filter(Boolean).join('、');
+      item.innerHTML = `
+        <div class="timeline-date">${formatDate(ev.date)}</div>
+        <div class="timeline-name">${def ? def.icon + ' ' + def.name : ''} 釣行</div>
+        ${ev.data.memo ? `<div class="timeline-memo">${escapeHtml(ev.data.memo)}</div>` : ''}
+        ${reelNames ? `<div class="timeline-memo">使用リール：${escapeHtml(reelNames)}</div>` : ''}
+      `;
+    } else {
+      item.innerHTML = `
+        <div class="timeline-date">${formatDate(ev.date)}</div>
+        <div class="timeline-name">🧵 ${escapeHtml(ev.data.reelName)} ライン巻き替え</div>
+        ${ev.data.line ? `<div class="timeline-memo">${escapeHtml(ev.data.line)}</div>` : ''}
+      `;
+    }
+    list.appendChild(item);
+  });
+}
+
+function escapeHtml(str) {
+  const div = document.createElement('div');
+  div.textContent = str == null ? '' : String(str);
+  return div.innerHTML;
+}
+function escapeAttr(str) {
+  return String(str).replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+}
+
+// ==== チェック操作 ====
+function toggleCheck(label) {
+  if (state.checked[label]) delete state.checked[label];
+  else state.checked[label] = true;
+  saveState();
+  renderChecklist();
+}
+
+function addItem() {
+  const input = document.getElementById('new-item-input');
+  const label = input.value.trim();
+  if (!label) return;
+  const t = state.templates[state.activeTemplate];
+  const existing = getItems(state.activeTemplate);
+  if (!existing.includes(label)) {
+    // デフォルト項目を過去に消していた場合は復活扱い
+    if (t.removedItems.includes(label)) {
+      t.removedItems = t.removedItems.filter(i => i !== label);
+    } else {
+      t.customItems.push(label);
+    }
+  }
+  input.value = '';
+  saveState();
+  renderChecklist();
+}
+
+function removeItem(label) {
+  const t = state.templates[state.activeTemplate];
+  if (t.customItems.includes(label)) {
+    t.customItems = t.customItems.filter(i => i !== label);
+  } else {
+    t.removedItems.push(label);
+  }
+  delete state.checked[label];
+  saveState();
+  renderChecklist();
+}
+
+function resetChecks() {
+  state.checked = {};
+  saveState();
+  renderChecklist();
+}
+
+// ==== 釣行完了 ====
+function openTripComplete() {
+  selectedTripReels = new Set();
+  document.getElementById('trip-date').value = new Date().toISOString().slice(0, 10);
+  document.getElementById('trip-memo').value = '';
+  const wrap = document.getElementById('trip-reel-select');
+  wrap.innerHTML = '';
+  if (state.reels.length === 0) {
+    wrap.innerHTML = '<div class="empty" style="padding:10px 0;">リール未登録でも記録できます（「ライン」タブから登録可能）</div>';
+  } else {
+    state.reels.forEach(reel => {
+      const div = document.createElement('div');
+      div.className = 'reel-select-item';
+      div.innerHTML = `<div class="check-box"></div><div>${escapeHtml(reel.name)}<br><small style="color:var(--text-sub)">${escapeHtml(reel.line || '')}</small></div>`;
+      div.onclick = () => {
+        if (selectedTripReels.has(reel.id)) {
+          selectedTripReels.delete(reel.id);
+          div.classList.remove('selected');
+          div.querySelector('.check-box').textContent = '';
+        } else {
+          selectedTripReels.add(reel.id);
+          div.classList.add('selected');
+          div.querySelector('.check-box').textContent = '✓';
+        }
+      };
+      wrap.appendChild(div);
+    });
+  }
+  document.getElementById('trip-overlay').classList.add('show');
+}
+
+function closeTripModal() {
+  document.getElementById('trip-overlay').classList.remove('show');
+}
+
+function confirmTrip() {
+  const date = document.getElementById('trip-date').value || new Date().toISOString().slice(0, 10);
+  const memo = document.getElementById('trip-memo').value.trim();
+
+  state.trips.push({
+    date, memo,
+    templateId: state.activeTemplate,
+    reelIds: [...selectedTripReels],
+  });
+
+  // 連動：選んだリールの使用回数+1
+  selectedTripReels.forEach(id => {
+    const reel = state.reels.find(r => r.id === id);
+    if (reel) reel.tripCount++;
+  });
+
+  state.checked = {};
+  saveState();
+  closeTripModal();
+  render();
+  switchView('history');
+}
+
+// ==== リール管理 ====
+function openReelModal(reelId) {
+  editingReelId = reelId || null;
+  const isEdit = !!reelId;
+  document.getElementById('reel-modal-title').textContent = isEdit ? 'リールを編集' : 'リールを登録';
+  document.getElementById('reel-count-field').style.display = isEdit ? 'block' : 'none';
+
+  if (isEdit) {
+    const reel = state.reels.find(r => r.id === reelId);
+    document.getElementById('reel-name').value = reel.name;
+    document.getElementById('reel-line').value = reel.line || '';
+    document.getElementById('reel-date').value = reel.spooledDate || '';
+    document.getElementById('reel-threshold').value = String(reel.threshold);
+    document.getElementById('reel-count').value = String(reel.tripCount);
+  } else {
+    document.getElementById('reel-name').value = '';
+    document.getElementById('reel-line').value = '';
+    document.getElementById('reel-date').value = new Date().toISOString().slice(0, 10);
+    document.getElementById('reel-threshold').value = '15';
+  }
+  document.getElementById('reel-overlay').classList.add('show');
+}
+
+function closeReelModal() {
+  document.getElementById('reel-overlay').classList.remove('show');
+  editingReelId = null;
+}
+
+function confirmReel() {
+  const name = document.getElementById('reel-name').value.trim();
+  if (!name) { alert('リール名を入力してください'); return; }
+  const line = document.getElementById('reel-line').value.trim();
+  const spooledDate = document.getElementById('reel-date').value;
+  const threshold = parseInt(document.getElementById('reel-threshold').value, 10) || 15;
+
+  if (editingReelId) {
+    const reel = state.reels.find(r => r.id === editingReelId);
+    reel.name = name;
+    reel.line = line;
+    reel.spooledDate = spooledDate;
+    reel.threshold = threshold;
+    const count = parseInt(document.getElementById('reel-count').value, 10);
+    if (!isNaN(count) && count >= 0) reel.tripCount = count;
+  } else {
+    state.reels.push({ id: uid(), name, line, spooledDate, threshold, tripCount: 0 });
+  }
+  saveState();
+  closeReelModal();
+  render();
+}
+
+function deleteReel(reelId) {
+  if (!confirm('このリールを削除しますか？（履歴は残ります）')) return;
+  state.reels = state.reels.filter(r => r.id !== reelId);
+  saveState();
+  render();
+}
+
+// ==== 巻き替え ====
+function openRespoolModal(reelId) {
+  respoolingReelId = reelId;
+  const reel = state.reels.find(r => r.id === reelId);
+  document.getElementById('respool-date').value = new Date().toISOString().slice(0, 10);
+  document.getElementById('respool-line').value = reel.line || '';
+  document.getElementById('respool-overlay').classList.add('show');
+}
+
+function closeRespoolModal() {
+  document.getElementById('respool-overlay').classList.remove('show');
+  respoolingReelId = null;
+}
+
+function confirmRespool() {
+  const reel = state.reels.find(r => r.id === respoolingReelId);
+  if (!reel) return;
+  const date = document.getElementById('respool-date').value || new Date().toISOString().slice(0, 10);
+  const line = document.getElementById('respool-line').value.trim();
+
+  state.respools.push({ reelId: reel.id, reelName: reel.name, date, line });
+  reel.tripCount = 0;
+  reel.spooledDate = date;
+  if (line) reel.line = line;
+
+  saveState();
+  closeRespoolModal();
+  render();
+}
+
+// ==== タブ ====
+function switchView(name) {
+  document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.getElementById('view-' + name).classList.add('active');
+  document.querySelector(`.tab[data-view="${name}"]`).classList.add('active');
+}
+
+// ==== PWA ====
+const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone;
+if (!isStandalone) {
+  document.getElementById('install-banner').classList.add('show');
+}
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('sw.js').catch(() => {});
+  });
+}
+
+render();
+</script>
+</body>
+</html>
